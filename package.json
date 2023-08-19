@@ -1,0 +1,24 @@
+{
+  "name": "easy-employee-tracker",
+  "version": "1.0.0",
+  "description": "This application is an employee tracker",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mHammy/easy-employee-tracker.git"
+  },
+  "author": "mHammy",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mHammy/easy-employee-tracker/issues"
+  },
+  "homepage": "https://github.com/mHammy/easy-employee-tracker#readme",
+  "dependencies": {
+    "express": "^4.18.2",
+    "inquirer": "^8.2.4"
+  }
+}
