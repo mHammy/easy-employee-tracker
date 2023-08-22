@@ -1,7 +1,9 @@
+// required files/modules
 const inquirer = require('inquirer');
-const db = require('./db/database');
+const db = require('./db/database.js');
 const mysql = require('mysql2');
 
+// main menu within the application
 const mainMenu = () => {
   inquirer.prompt({
     name: 'action',
@@ -18,36 +20,39 @@ const mainMenu = () => {
       'Exit'
     ]
   })
-  .then((answer) => {
-    switch (answer.action) {
-      case 'View all departments':
-        viewDepartments();
-        break;
-      case 'View all roles':
-        viewRoles();
-        break;
-      case 'Add employee':
-        addEmployee();
-        break;
-      case 'View employees':
-        viewEmployees();
-        break;
-      case 'Add a department':
-        addDepartment();
-        break;
-      case 'Add a role':
-        addRole();
-        break;
-      case 'Update an employee role':
-        updateEmployeeRole();
-        break;
-      case 'Exit':
-        db.end();
-        break;
-    }
-  });
-};
-
+    .then((answer) => {
+      switch (answer.action) {
+        case 'View all departments':
+          console.log("Viewing all departments...");
+          break;
+        case 'View all roles':
+          console.log("Viewing all roles...");
+          break;
+        case 'View all employees':
+          console.log("Viewing all employees...");
+          break;
+        case 'Add a department':
+          console.log("Adding a department...");
+          break;
+        case 'Add a role':
+          console.log("Adding a role...");
+          break;
+        case 'Add an employee':
+          console.log("Adding an employee...");
+          break;
+        case 'Update an employee role':
+          console.log("Updating an employee's role...");
+          break;
+        case 'Exit':
+          console.log("Exiting...");
+          break;
+      }
+    })
+    .catch(err => {
+      console.error("Error:", err);
+    });
+}
+// the following functions are called from the main menu
 const viewDepartments = () => {
   const query = "SELECT id AS 'Department ID', name AS 'Department Name' FROM departments";
   db.query(query, (err, results) => {
