@@ -1,7 +1,18 @@
 // required files/modules
+const express = require('express');
 const inquirer = require('inquirer');
-const db = require('./db/database.js');
-const mysql = require('mysql2');
+const sequelize = require('./config/connection.js');
+const { Role, Employee, Department } = require('./models');
+
+const app = express();
+const PORT = process.env.PORT || 3001;
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+sequelize.sync().then(() => {
+  app.listen(PORT, () => console.log('Now listening'));
+});
 
 // main menu within the application
 const mainMenu = () => {
@@ -24,24 +35,31 @@ const mainMenu = () => {
       switch (answer.action) {
         case 'View all departments':
           console.log("Viewing all departments...");
+          viewDepartments();
           break;
         case 'View all roles':
           console.log("Viewing all roles...");
+          viewRoles();
           break;
         case 'View all employees':
           console.log("Viewing all employees...");
+          viewEmployees();
           break;
         case 'Add a department':
           console.log("Adding a department...");
+          addDepartment();
           break;
         case 'Add a role':
           console.log("Adding a role...");
+          addRole();
           break;
         case 'Add an employee':
           console.log("Adding an employee...");
+          addEmployee();
           break;
         case 'Update an employee role':
           console.log("Updating an employee's role...");
+          updateEmployeeRole();
           break;
         case 'Exit':
           console.log("Exiting...");
@@ -54,151 +72,122 @@ const mainMenu = () => {
 }
 // the following functions are called from the main menu
 const viewDepartments = () => {
-  const query = "SELECT id AS 'Department ID', name AS 'Department Name' FROM departments";
-  db.query(query, (err, results) => {
-    if (err) throw err;
-    console.table(results);
-    mainMenu();
-  });
-};
+  Department.findAll()
+    .then(departments => {
+      console.table(departments.map(dept => dept.dataValues));
 
-const addDepartment = () => {
-  inquirer.prompt([
-    {
-      name: 'departmentName',
-      type: 'input',
-      message: 'Enter the name of the department:'
-    }
-  ])
-  .then((answer) => {
-    const query = "INSERT INTO departments (name) VALUES (?)";
-    db.query(query, [answer.departmentName], (err, result) => {
-      if (err) throw err;
-      console.log("Department added successfully!");
-      mainMenu();
+      return inquirer.prompt({
+        name: 'action',
+        type: 'list',
+        message: 'What would you like to do next?',
+        choices: ['Back to main menu']
+      });
+    })
+    .then((answer) => {
+      if (answer.action === 'Back to main menu') {
+        mainMenu();
+      }
+    })
+    .catch(err => {
+      console.error("Error:", err);
     });
-  });
 };
 
 const viewRoles = () => {
-  const query = `
-    SELECT r.id AS 'Role ID', 
-           r.title AS 'Job Title', 
-           r.salary AS 'Salary',
-           d.name AS 'Department Name' 
-    FROM roles r
-    JOIN departments d ON r.department_id = d.id;
-  `;
-  db.query(query, (err, results) => {
-    if (err) throw err;
-    console.table(results);
-    mainMenu();
-  });
+  Role.findAll({
+    include: [{ model: Department, as: 'department', attributes: ['name'] }]
+  })
+    .then(roles => {
+      console.table(roles.map(role => role.dataValues));
+
+      return inquirer.prompt({
+        name: 'action',
+        type: 'list',
+        message: 'What would you like to do next?',
+        choices: ['Back to main menu']
+      });
+    })
+    .then((answer) => {
+      if (answer.action === 'Back to main menu') {
+        mainMenu();
+      }
+    })
+    .catch(err => {
+      console.error("Error:", err);
+    });
 };
 
 const addRole = () => {
-    const queryDepartments = "SELECT id, name FROM departments";
-  
-    db.query(queryDepartments, (err, departments) => {
-      if (err) throw err;
-  
+  Department.findAll()
+    .then(departments => {
       inquirer.prompt([
-        {
-          name: 'roleName',
-          type: 'input',
-          message: 'Enter the role name:'
-        },
-        {
-          name: 'salary',
-          type: 'input',
-          message: 'Enter the salary for the role:',
-          validate: value => {
-            if (isNaN(value)) {
-              return 'Please enter a numeric value for salary.';
-            }
-            return true;
-          }
-        },
-        {
-          name: 'department',
-          type: 'list',
-          message: 'Choose the department for the role:',
-          choices: departments.map(department => ({
-            name: department.name,
-            value: department.id
-          }))
-        }
+        // Need to add prompts here
       ])
-      .then((answers) => {
-        const query = "INSERT INTO roles (title, salary, department_id) VALUES (?, ?, ?)";
-        db.query(query, [answers.roleName, answers.salary, answers.department], (err, result) => {
-          if (err) throw err;
-          console.log("Role added successfully!");
-          mainMenu();
+        .then((answers) => {
+          Role.create({
+            title: answers.roleName,
+            salary: answers.salary,
+            department_id: answers.department
+          })
+            .then(() => {
+              console.log("Role added successfully!");
+              mainMenu();
+            })
+            .catch(err => {
+              console.error("Error:", err);
+            });
         });
-      });
+    })
+    .catch(err => {
+      console.error("Error:", err);
     });
-  };
+};
 
 const updateEmployeeRole = () => {
   let roles = [];
   let employees = [];
 
-  const queryRoles = "SELECT id, title FROM roles";
-  const queryEmployees = "SELECT id, CONCAT(first_name, ' ', last_name) AS employee_name FROM employees";
-
-  db.query(queryRoles, (err, results) => {
-    if (err) throw err;
-    roles = results;
-    db.query(queryEmployees, (err, results) => {
-      if (err) throw err;
-      employees = results;
+  Role.findAll()
+    .then(roleResults => {
+      roles = roleResults;
+      return Employee.findAll();
+    })
+    .then(employeeResults => {
+      employees = employeeResults;
 
       inquirer.prompt([
-        {
-          name: 'employee',
-          type: 'list',
-          message: 'Choose the employee to update:',
-          choices: employees.map(employee => ({
-            name: employee.employee_name,
-            value: employee.id
-          }))
-        },
-        {
-          name: 'role',
-          type: 'list',
-          message: 'Choose the new role for the employee:',
-          choices: roles.map(role => ({
-            name: role.title,
-            value: role.id
-          }))
-        }
+        // Need to add prompts here
       ])
-      .then((answers) => {
-        const query = "UPDATE employees SET role_id = ? WHERE id = ?";
-        db.query(query, [answers.role, answers.employee], (err, result) => {
-          if (err) throw err;
-          console.log("Employee's role updated successfully!");
-          mainMenu();
+        .then((answers) => {
+          Employee.update(
+            { role_id: answers.role },
+            { where: { id: answers.employee } }
+          )
+            .then(() => {
+              console.log("Employee's role updated successfully!");
+              mainMenu();
+            })
+            .catch(err => {
+              console.error("Error:", err);
+            });
         });
-      });
+    })
+    .catch(err => {
+      console.error("Error:", err);
     });
-  });
 };
 
 const addEmployee = () => {
   let roles = [];
   let employees = [];
 
-  const queryRoles = "SELECT id, title FROM roles";
-  const queryEmployees = "SELECT id, CONCAT(first_name, ' ', last_name) AS employee_name FROM employees";
-
-  db.query(queryRoles, (err, results) => {
-    if (err) throw err;
-    roles = results;
-    db.query(queryEmployees, (err, results) => {
-      if (err) throw err;
-      employees = results;
+  Role.findAll()
+    .then(roleResults => {
+      roles = roleResults;
+      return Employee.findAll();
+    })
+    .then(employeeResults => {
+      employees = employeeResults;
 
       inquirer.prompt([
         {
@@ -230,37 +219,78 @@ const addEmployee = () => {
           }))
         }
       ])
-      .then((answers) => {
-        const query = "INSERT INTO employees (first_name, last_name, role_id, manager_id) VALUES (?, ?, ?, ?)";
-        db.query(query, [answers.firstName, answers.lastName, answers.role, answers.manager], (err, result) => {
-          if (err) throw err;
-          console.log("Employee added successfully!");
-          mainMenu();
+        .then((answers) => {
+          Employee.create({
+            first_name: answers.firstName,
+            last_name: answers.lastName,
+            role_id: answers.role,
+            manager_id: answers.manager
+          })
+            .then(() => {
+              console.log("Employee added successfully!");
+              mainMenu();
+            })
+            .catch(err => {
+              console.error("Error:", err);
+            });
         });
-      });
+    })
+    .catch(err => {
+      console.error("Error:", err);
     });
-  });
 };
 
 const viewEmployees = () => {
-  const query = `
-    SELECT e.id AS 'Employee ID', 
-           CONCAT(e.first_name, ' ', e.last_name) AS 'Full Name',
-           r.title AS 'Role',
-           r.salary AS 'Salary',
-           d.name AS 'Department',
-           CONCAT(m.first_name, ' ', m.last_name) AS 'Manager'
-    FROM employees e
-    LEFT JOIN roles r ON e.role_id = r.id
-    LEFT JOIN departments d ON r.department_id = d.id
-    LEFT JOIN employees m ON e.manager_id = m.id;
-  `;
-  db.query(query, (err, results) => {
-    if (err) throw err;
-    console.table(results);
+  Employee.findAll({
+    attributes: [
+      'id',
+      [sequelize.fn('concat', sequelize.col('employee.first_name'), ' ', sequelize.col('employee.last_name')), 'fullName']
+    ],
+    include: [
+      {
+        model: Role,
+        as: 'role',  
+        attributes: ['title', 'salary'],
+        include: {
+          model: Department,
+          as: 'department',
+          attributes: ['name']
+        }
+      },
+      {
+        model: Employee,
+        as: 'manager',
+        attributes: [[sequelize.fn('concat', sequelize.col('manager.first_name'), ' ', sequelize.col('manager.last_name')), 'fullName']]
+      }
+    ]
+  })
+  .then(results => {
+    const plainResults = results.map(result => {
+        const plain = result.get({ plain: true });
+        plain.roleTitle = plain.role.title; // Extract role's title
+        plain.manager = plain.manager ? plain.manager.fullName : ''; // Format manager's name or set to empty string if null
+        delete plain.role; // Remove the role object
+        return plain;
+    });
+
+    console.table(plainResults);
     mainMenu();
+})
+  .catch(err => {
+    console.error("Error:", err);
   });
 };
 
+function connectAndSyncDB() {
+  return sequelize.sync();
+}
+
 // start the application
-mainMenu();
+async function initialize() {
+  // Connect to the database and sync it 
+  await connectAndSyncDB();
+  mainMenu();
+}
+
+// Start the app
+initialize();

@@ -1,13 +1,16 @@
-var mysql = require("mysql");
+const sequelize = require('sequelize');
 require('dotenv').config();
 
 //create connection information to sql database
-var connection = mysql.createConnection({
-    host: "localhost",
-    port: 3306,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASS,
-    database: 'employee_db'
-});
+const connection = new sequelize(
+    'employee_tracker_db',
+    'root',
+    'Free1211!',
+    {
+        host: 'localhost',
+        dialect: 'mysql',
+        port: 3306,
+    }
+);
 
 module.exports = connection;
