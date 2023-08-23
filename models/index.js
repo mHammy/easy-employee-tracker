@@ -8,6 +8,11 @@ Role.belongsTo(Department, {
   as: 'department'
 });
 
+Role.hasMany(Employee, {
+  foreignKey: 'role_id',
+  as: 'employees'
+});
+
 Role.findAll({
     include: [{
       model: Department,
@@ -28,6 +33,11 @@ Employee.belongsTo(Employee, {
 Employee.hasMany(Employee, {
   as: 'subordinates',
   foreignKey: 'manager_id'
+});
+
+Department.hasMany(Role, {
+  foreignKey: 'department_id',
+  as: 'roles'
 });
 
 module.exports = {
