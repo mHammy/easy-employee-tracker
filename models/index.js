@@ -1,8 +1,9 @@
+// require models
 const Role = require('./Role');
 const Employee = require('./Employee');
 const Department = require('./Department');
 
-// Set up associations
+// set up associations
 Role.belongsTo(Department, {
   foreignKey: 'department_id',
   as: 'department'
@@ -39,7 +40,7 @@ Department.hasMany(Role, {
   foreignKey: 'department_id',
   as: 'roles'
 });
-
+// export
 module.exports = {
   Role,
   Employee,

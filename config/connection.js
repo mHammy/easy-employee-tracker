@@ -1,17 +1,17 @@
-const sequelize = require('sequelize');
+// require sequelize and dotenv
+const Sequelize = require('sequelize');
 require('dotenv').config();
-
-//create connection information to sql database
-const connection = new sequelize(
-    'employee_tracker_db',
-    'root',
-    'Free1211!',
+// connection to database
+const connection = new Sequelize(
+    process.env.DB_NAME,
+    process.env.DB_USER,
+    process.env.DB_PASSWORD,
     {
-        host: 'localhost',
+        host: process.env.DB_HOST,
         dialect: 'mysql',
-        port: 3306,
+        port: process.env.DB_PORT,
         logging: false,
     }
 );
-
+// export
 module.exports = connection;
