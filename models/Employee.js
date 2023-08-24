@@ -1,6 +1,7 @@
+// require sequelize
 const { Model, DataTypes } = require('sequelize');
 const sequelize = require('../config/connection');
-
+// model definition
 class Employee extends Model {}
 
 Employee.init(
@@ -42,5 +43,5 @@ Employee.init(
     modelName: 'employee',
   }
 );
-
+// export
 module.exports = Employee;

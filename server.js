@@ -51,6 +51,8 @@ const mainMenu = () => {
     });
 }
 // the following functions are called from the main menu
+
+// view all departments
 const viewDepartments = () => {
   Department.findAll()
     .then(departments => {
@@ -66,16 +68,16 @@ const viewDepartments = () => {
     .then((answer) => {
       switch (answer.action) {
         case 'Add':
-          addDepartment(); // You need to have a function named addDepartment
+          addDepartment();
           break;
         case 'View department budget':
-          viewDepartmentBudget(); // You need to have a function named viewDepartmentBudget
+          viewDepartmentBudget();
           break;
         case 'Update':
-          updateDepartment(); // You need to have a function named updateDepartment
+          updateDepartment();
           break;
         case 'Delete':
-          deleteDepartment(); // You need to have a function named deleteDepartment
+          deleteDepartment();
           break;
         case 'Back to main menu':
           mainMenu();
@@ -86,7 +88,7 @@ const viewDepartments = () => {
       console.error("Error:", err);
     });
 };
-
+// view all employees
 const viewEmployees = () => {
   Employee.findAll({
     attributes: [
@@ -122,7 +124,6 @@ const viewEmployees = () => {
 
       console.table(plainResults);
 
-      // Prompt for next action
       return inquirer.prompt({
         name: 'action',
         type: 'list',
@@ -163,7 +164,96 @@ const viewEmployees = () => {
       console.error("Error:", err);
     });
 };
+// view all employees by manager
+const viewEmployeesByManager = () => {
+  Employee.findAll()
+    .then(employees => {
+      return inquirer.prompt({
+        name: 'manager',
+        type: 'list',
+        message: 'Choose a manager to view their employees:',
+        choices: employees.map(employee => ({
+          name: `${employee.first_name} ${employee.last_name}`,
+          value: employee.id
+        }))
+      });
+    })
+    .then(answers => {
+      return Employee.findAll({
+        where: { manager_id: answers.manager },
+        include: [
+          {
+            model: Role,
+            as: 'role'
+          },
+          {
+            model: Employee,
+            as: 'manager'
+          }
+        ]
+      });
+    })
+    .then(employeesUnderManager => {
+      const formattedEmployees = employeesUnderManager.map(emp => {
+        return {
+          id: emp.id,
+          first_name: emp.first_name,
+          last_name: emp.last_name,
+          role: emp.role.title,
+          manager: `${emp.manager.first_name} ${emp.manager.last_name}`
+        };
+      });
 
+      console.table(formattedEmployees);
+      mainMenu();
+    })
+    .catch(err => {
+      console.error("Error:", err);
+    });
+};
+
+// view department budget
+const viewDepartmentBudget = () => {
+  Department.findAll()
+    .then(departments => {
+      return inquirer.prompt({
+        name: 'departmentName',
+        type: 'list',
+        message: 'Choose a department to view its budget:',
+        choices: departments.map(dept => dept.name)
+      });
+    })
+    .then(answer => {
+      const chosenDepartment = answer.departmentName;
+
+      return Department.findOne({
+        where: { name: chosenDepartment },
+        include: [
+          {
+            model: Role,
+            as: 'roles',
+            include: [
+              {
+                model: Employee,
+                as: 'employees'
+              }
+            ]
+          }
+        ]
+      })
+    })
+    .then(department => {
+      const totalSalary = department.roles.reduce((acc, role) => {
+        return acc + (role.salary * role.employees.length);
+      }, 0);
+      console.log(`Total salary for the ${department.name} department is ${totalSalary}`);
+      mainMenu();
+    })
+    .catch(err => {
+      console.error("Error:", err);
+    });
+};
+// view all roles
 const viewRoles = () => {
   Role.findAll({
     include: [
@@ -175,16 +265,13 @@ const viewRoles = () => {
     ]
   })
     .then(results => {
-      // Map results to flatten the department name
       const tableData = results.map(result => {
         const data = result.get({ plain: true });
-        // replace department object with just the name
         data.department = data.department.name;
         return data;
       });
       console.table(tableData);
 
-      // Prompt for next action
       return inquirer.prompt({
         name: 'action',
         type: 'list',
@@ -217,7 +304,8 @@ const viewRoles = () => {
       console.error("Error:", err);
     });
 };
-
+// Add Section
+// add a role
 const addRole = () => {
   Department.findAll()
     .then(departments => {
@@ -260,7 +348,7 @@ const addRole = () => {
     .then((answers) => {
       return Role.create({
         title: answers.roleName,
-        salary: parseFloat(answers.salary),  // Ensure salary is a number
+        salary: parseFloat(answers.salary),
         department_id: answers.department
       });
     })
@@ -272,7 +360,7 @@ const addRole = () => {
       console.error("Error:", err);
     });
 };
-
+// add a department
 const addDepartment = () => {
   inquirer.prompt([
     {
@@ -283,11 +371,10 @@ const addDepartment = () => {
     }
   ])
     .then(answer => {
-      // Use Sequelize to add the new department to the database
       Department.create({ name: answer.departmentName })
         .then(() => {
           console.log(`Added new department: ${answer.departmentName}`);
-          mainMenu();  // Return to the main menu or whatever flow you want after adding
+          mainMenu();
         })
         .catch(err => {
           console.error("Error adding department:", err);
@@ -295,7 +382,7 @@ const addDepartment = () => {
         });
     });
 };
-
+// add an employee
 const addEmployee = () => {
   let roles = [];
   let employees = [];
@@ -334,10 +421,10 @@ const addEmployee = () => {
           message: 'Choose the manager:',
           choices: [
             ...employees.map(employee => ({
-              name: `${employee.first_name} ${employee.last_name}`, // format the name
+              name: `${employee.first_name} ${employee.last_name}`,
               value: employee.id
             })),
-            { name: "No Manager", value: null }  // option for no manager
+            { name: "No Manager", value: null }
           ]
         }
       ])
@@ -346,7 +433,7 @@ const addEmployee = () => {
             first_name: answers.firstName,
             last_name: answers.lastName,
             role_id: answers.role,
-            manager_id: answers.manager === null ? null : answers.manager  // handle null manager
+            manager_id: answers.manager === null ? null : answers.manager
           })
             .then(() => {
               console.log("Employee added successfully!");
@@ -362,6 +449,8 @@ const addEmployee = () => {
     });
 };
 
+// Update Section
+// update a role
 const updateEmployeeRole = () => {
   let roles = [];
   let employees = [];
@@ -374,7 +463,6 @@ const updateEmployeeRole = () => {
     .then(employeeResults => {
       employees = employeeResults;
 
-      // Inquirer prompts
       return inquirer.prompt([
         {
           name: 'employee',
@@ -410,7 +498,7 @@ const updateEmployeeRole = () => {
       console.error("Error:", err);
     });
 };
-
+// update a department
 const updateDepartment = () => {
   Department.findAll()
     .then(departments => {
@@ -445,9 +533,8 @@ const updateDepartment = () => {
       console.error("Error:", err);
     });
 };
-
+// update an employee
 const updateEmployee = () => {
-  // First, let's get all employees
   Employee.findAll()
     .then(employees => {
       return inquirer.prompt([
@@ -471,7 +558,6 @@ const updateEmployee = () => {
     .then(answers => {
       const attributeToUpdate = answers.attribute;
 
-      // If updating the role, fetch roles from the database
       if (attributeToUpdate === 'role_id') {
         return Role.findAll().then(roles => {
           const roleChoices = roles.map(role => ({
@@ -490,7 +576,6 @@ const updateEmployee = () => {
           }));
         });
       } else {
-        // For other attributes, get a simple input
         return inquirer.prompt({
           name: 'newValue',
           type: 'input',
@@ -502,7 +587,6 @@ const updateEmployee = () => {
       }
     })
     .then(answers => {
-      // Finally, we update the employee with the new value
       const updateData = {};
       updateData[answers.attribute] = answers.newValue;
 
@@ -523,7 +607,7 @@ const updateEmployee = () => {
 
 
 
-
+// update an employee's manager
 const updateEmployeeManager = () => {
   let employees = [];
 
@@ -566,96 +650,8 @@ const updateEmployeeManager = () => {
       console.error("Error:", err);
     });
 };
-
-const viewEmployeesByManager = () => {
-  Employee.findAll()
-    .then(employees => {
-      return inquirer.prompt({
-        name: 'manager',
-        type: 'list',
-        message: 'Choose a manager to view their employees:',
-        choices: employees.map(employee => ({
-          name: `${employee.first_name} ${employee.last_name}`,
-          value: employee.id
-        }))
-      });
-    })
-    .then(answers => {
-      return Employee.findAll({
-        where: { manager_id: answers.manager },
-        include: [
-          {
-            model: Role,
-            as: 'role' 
-          },
-          {
-            model: Employee,
-            as: 'manager' 
-          }
-        ]
-      });
-    })
-    .then(employeesUnderManager => {
-      const formattedEmployees = employeesUnderManager.map(emp => {
-        return {
-          id: emp.id,
-          first_name: emp.first_name,
-          last_name: emp.last_name,
-          role: emp.role.title,
-          manager: `${emp.manager.first_name} ${emp.manager.last_name}`
-        };
-      });
-      
-      console.table(formattedEmployees);
-      mainMenu();
-    })
-    .catch(err => {
-      console.error("Error:", err);
-    });
-};
-
-
-const viewDepartmentBudget = () => {
-  Department.findAll()
-    .then(departments => {
-      return inquirer.prompt({
-        name: 'departmentName',
-        type: 'list',
-        message: 'Choose a department to view its budget:',
-        choices: departments.map(dept => dept.name)
-      });
-    })
-    .then(answer => {
-      const chosenDepartment = answer.departmentName;
-
-      return Department.findOne({
-        where: { name: chosenDepartment },
-        include: [
-          {
-            model: Role,
-            as: 'roles',
-            include: [
-              {
-                model: Employee,
-                as: 'employees'
-              }
-            ]
-          }
-        ]
-      })
-    })
-    .then(department => {
-      const totalSalary = department.roles.reduce((acc, role) => {
-        return acc + (role.salary * role.employees.length);
-      }, 0);
-      console.log(`Total salary for the ${department.name} department is ${totalSalary}`);
-      mainMenu();
-    })
-    .catch(err => {
-      console.error("Error:", err);
-    });
-};
-
+// Delete Section
+// delete an employee
 const deleteEmployee = () => {
   Employee.findAll()
     .then(employees => {
@@ -680,7 +676,7 @@ const deleteEmployee = () => {
       console.error("Error:", err);
     });
 };
-
+// delete a role
 const deleteRole = () => {
   Role.findAll()
     .then(roles => {
@@ -706,7 +702,7 @@ const deleteRole = () => {
     });
 };
 
-
+// delete a department
 const deleteDepartment = () => {
   Department.findAll()
     .then(departments => {
@@ -738,7 +734,6 @@ function connectAndSyncDB() {
 
 // start the application
 async function initialize() {
-  // Connect to the database and sync it 
   await connectAndSyncDB();
   mainMenu();
 }

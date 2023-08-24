@@ -1,6 +1,7 @@
+// require sequelize
 const { Model, DataTypes } = require('sequelize');
 const sequelize = require('../config/connection');
-
+// model definition
 class Role extends Model {}
 
 Role.init(
@@ -34,5 +35,5 @@ Role.init(
     modelName: 'role',
   }
 );
-
+// export
 module.exports = Role;
