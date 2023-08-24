@@ -132,6 +132,7 @@ const viewEmployees = () => {
           'View employees by manager',
           'Add an employee',
           'Update an employee',
+          'Update an employee\'s role',
           'Update an employee\'s manager',
           'Delete an employee',
           'Back to main menu'
@@ -148,6 +149,9 @@ const viewEmployees = () => {
           break;
         case 'Update an employee':
           updateEmployee();
+          break;
+        case 'Update an employee\'s role':
+          updateEmployeeRole();
           break;
         case 'Update an employee\'s manager':
           updateEmployeeManager();
@@ -290,7 +294,7 @@ const viewRoles = () => {
           addRole();
           break;
         case 'Update a role':
-          updateEmployeeRole();
+          updateRole();
           break;
         case 'Delete a role':
           deleteRole();
@@ -450,7 +454,7 @@ const addEmployee = () => {
 };
 
 // Update Section
-// update a role
+// update a employees role
 const updateEmployeeRole = () => {
   let roles = [];
   let employees = [];
@@ -498,6 +502,80 @@ const updateEmployeeRole = () => {
       console.error("Error:", err);
     });
 };
+
+const updateRole = () => {
+  Role.findAll()
+    .then(roles => {
+      return inquirer.prompt([
+        {
+          name: 'roleId',
+          type: 'list',
+          message: 'Which role would you like to update?',
+          choices: roles.map(role => ({
+            name: role.title,
+            value: role.id
+          }))
+        },
+        {
+          name: 'attributeToUpdate',
+          type: 'list',
+          message: 'What would you like to update?',
+          choices: ['title', 'salary']
+        }
+      ]);
+    })
+    .then(answers => {
+      const additionalQuestions = [];
+      if (answers.attributeToUpdate === 'title') {
+        additionalQuestions.push({
+          name: 'newTitle',
+          type: 'input',
+          message: 'Enter the new title for the role:'
+        });
+      } else if (answers.attributeToUpdate === 'salary') {
+        additionalQuestions.push({
+          name: 'newSalary',
+          type: 'input',
+          message: 'Enter the new salary for the role:',
+          validate: value => {
+            const valid = !isNaN(parseFloat(value));
+            return valid || 'Please enter a number';
+          },
+          filter: value => parseFloat(value)
+        });
+      }
+
+      return inquirer.prompt(additionalQuestions).then(newValues => {
+        return {
+          ...answers,
+          ...newValues
+        };
+      });
+    })
+    .then(answers => {
+      const updateValues = {};
+      if (answers.attributeToUpdate === 'title') {
+        updateValues.title = answers.newTitle;
+      } else if (answers.attributeToUpdate === 'salary') {
+        updateValues.salary = answers.newSalary;
+      }
+
+      
+      return Role.update(updateValues, {
+        where: {
+          id: answers.roleId
+        }
+      });
+    })
+    .then(() => {
+      console.log("Role updated successfully!");
+      mainMenu();
+    })
+    .catch(err => {
+      console.error("Error:", err);
+    });
+};
+
 // update a department
 const updateDepartment = () => {
   Department.findAll()
