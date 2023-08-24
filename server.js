@@ -131,6 +131,7 @@ const viewEmployees = () => {
           'View employees by manager',
           'Add an employee',
           'Update an employee',
+          'Update an employee\'s manager',
           'Delete an employee',
           'Back to main menu'
         ]
@@ -146,6 +147,9 @@ const viewEmployees = () => {
           break;
         case 'Update an employee':
           updateEmployee();
+          break;
+        case 'Update an employee\'s manager':
+          updateEmployeeManager();
           break;
         case 'Delete an employee':
           deleteEmployee();
@@ -441,6 +445,83 @@ const updateDepartment = () => {
       console.error("Error:", err);
     });
 };
+
+const updateEmployee = () => {
+  // First, let's get all employees
+  Employee.findAll()
+    .then(employees => {
+      return inquirer.prompt([
+        {
+          name: 'employeeId',
+          type: 'list',
+          message: 'Choose an employee to update:',
+          choices: employees.map(employee => ({
+            name: `${employee.first_name} ${employee.last_name}`,
+            value: employee.id
+          }))
+        },
+        {
+          name: 'attribute',
+          type: 'list',
+          message: 'What would you like to update?',
+          choices: ['first_name', 'last_name', 'role_id']
+        }
+      ]);
+    })
+    .then(answers => {
+      const attributeToUpdate = answers.attribute;
+
+      // If updating the role, fetch roles from the database
+      if (attributeToUpdate === 'role_id') {
+        return Role.findAll().then(roles => {
+          const roleChoices = roles.map(role => ({
+            name: role.title,
+            value: role.id
+          }));
+
+          return inquirer.prompt({
+            name: 'newValue',
+            type: 'list',
+            message: 'Select the new role:',
+            choices: roleChoices
+          }).then(response => ({
+            ...answers,
+            newValue: response.newValue
+          }));
+        });
+      } else {
+        // For other attributes, get a simple input
+        return inquirer.prompt({
+          name: 'newValue',
+          type: 'input',
+          message: `Enter new value for ${attributeToUpdate}:`
+        }).then(response => ({
+          ...answers,
+          newValue: response.newValue
+        }));
+      }
+    })
+    .then(answers => {
+      // Finally, we update the employee with the new value
+      const updateData = {};
+      updateData[answers.attribute] = answers.newValue;
+
+      return Employee.update(updateData, {
+        where: {
+          id: answers.employeeId
+        }
+      });
+    })
+    .then(() => {
+      console.log("Employee updated successfully!");
+      mainMenu();
+    })
+    .catch(err => {
+      console.error("Error:", err);
+    });
+};
+
+
 
 
 const updateEmployeeManager = () => {
